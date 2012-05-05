@@ -1,189 +1,205 @@
        IDENTIFICATION DIVISION.
-       PROGRAM-ID.
-              CUSTOMER-FILE.
-      *DESCRIPTION.
-      *Maintain a file containing customer data,
-      *process charges, and payments.
-       AUTHOR.
-             LEE HOLT.
-      *CREATED FEB,08 2012.
-       ENVIRONMENT DIVISION.
+       PROGRAM-ID
+           PHONE-SUPPORT.
+       *DESCRIPTION.
+       *Maintain a phone company's customer file. Allow for adding to
+       *the file, searching for customers by name or phone number.
+       *AUTHOR
+       *       LEE HOLT.   APRIL 17, 2012.
+       *       HIGHLY INFLUENCED BY PROFESSOR KEN HARTNESS.
+       ENVIORNMENT DIVISION.
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
-          SELECT CUSTOMER-DATA
-                 ASSIGN TO "S:\COBOL\BETTERCUSTOMER\PROG1S.CBD".
-          SELECT CUSTOMER-OUT
-                 ASSIGN TO "S:\COBOL\BETTERCUSTOMER\TEMP.CBD".
+           SELECT PHONE-DATA   ASSIGN TO "S\COBOL\PHONE\PHONEDATA.CBD".
+
+           SELECT PHONE-HASH   ASSIGN TO "S\COBOL\PHONE\PHONETEMP.CBD"
+                               ORGANIZATION IS RELATIVE
+                               ACCESS IS RANDOM
+                               RELATIVE KEY IS HI-POS.
+
+           SELECT PHONE-FILE  ASSIGN TO "S\COBOL\PHONE\PHONEREC.CBD"
+                               ORGANIZATION IS RELATIVE
+                               ACCESS IS RANDOM
+                               RELATIVE KEY IS BD-POS.
+
 
        DATA DIVISION.
        FILE SECTION.
-       FD CUSTOMER-DATA.
-       01 CUSTOMER-REC.
-           05  CUS-ID      PIC 9(9).
-           05  CUS-NAME    PIC X(30).
-           05  CUS-LIMIT   PIC 9(11).
-           05  CUS-BAL     PIC 9(11).
+       FD PHONE-DATA.
+       01 PHONE-REC.
+           05 CUS-NAME     PIC X(30).
+           05 CUS-NUMB     PIC 9(10).
+           05 CUS-ADD      PIC X(40).
+           05 CUS-CITY     PIC X(30).
+           05 CUS-STATE    PIC XX.
+           05 CUS-ZIP      PIC 9(5).
 
-       FD CUSTOMER-OUT.
-       01 ALL-OUT          PIC X(63).
+       FD PHONE-HASH.
+       01 HI-BUCKET        PIC 9(9) COMP.
 
-       WORKING-STORAGE SECTION.
-       01 W-EOF            PIC X VALUE 'N'.
-           88 EOF          VALUE 'Y'.
-           88 NOT-EOF      VALUE 'N'.
+       FD PHONE-FILE.
+       01 H-PHONE-REC.
+           05 PF-LENGTH    PIC 999 COMP.
+           05 PF-DATA      OCCURS 1 TO 292 TIMES
+                           DEPENDING ON PF-LENGTH
+                           INDEXED BY X-BUCKET.
+              10 PF-NUM    PIC 9(10).
+              10 PF-LINK   PIC 9(9) COMP.
 
-       01 NEW-CUSTOMER.
-           05  NEW-ID      PIC 9(9).
-           05  NEW-NAME    PIC X(30).
-           05  NEW-LIMIT   PIC 9(11).
-           05  NEW-BAL     PIC 9(11).
 
-       01 UBER-QUESTION.
-           05 UBER-WORDS   PIC X(36)
-               VALUE "What is the ID of the customer?".
+       WORKING-STORAGE DIVISION.
+       01 W-NEEDS          PIC 9.
+       01 W-HASH-POS       PIC 9(9) COMP.
+       01 W-LENGTH         PIC 999.
 
-       01 UBER-ANSWER      PIC 9(9).
+       01 W-PHONE-NUMB     PIC 9(10).
 
-       01 UBER-ANSWER2     PIC X(5).
+       01 QUESTION1.
+           05              PIC X(13) VALUE "SELECT 1, 2 OR 3".
+           05              PIC X(18) VALUE "1 FOR SEARCHBYNAME".
+           05              PIC X(21) VALUE "2 FOR SEARCHBYNUMBER".
+           05              PIC X(14) VALUE "3 TO FINISH UP".
 
-       01 W-LENGTH         PIC 9(7).
+       01 W-PHONE-DATA.
+           05 W-CUS-NAME   PIC X(30).
+           05 W-CUS-NUM    PIC 9(10).
+           05 W-CUS-ADD    PIC X(40).
+           05 W-CUS-CITY   PIC X(40).
+           05 W-CUS-STATE  PIC XX.
+           05 W-CUS-ZIP    PIC 9(5).
 
-       01 NOT-FOUND        PIC X VALUE 'N'.
-           88 FOUND        VALUE 'Y'.
+       01 TEMPTOADD        PIC X(119).
+       01 ADDNEWCUSTOMER   PIC XXX.
 
-       01 ADDED-BALANCE    PIC 9(11).
-       01 SUBTRACTED-BALANCE PIC 9(11).
+       PROCEDURE DIVISION.
+       MAIN PARAGRAPH.
+           OPEN    INPUT   PHONE-DATA
+                   OUTPUT  PHONE-HASH
+                   OUTPUT  PHONE-FILE.
 
-       01 ADDING-CUSTOMER  PIC X(63).
-
-       01 YESORNO          PIC X.
-
-       01 ITS-FINISHED     PIC X VALUE 'N'.
-           88 NOT-DONE     VALUE 'N'.
-           88 ITS-DONE     VALUE 'Y'.
-      
-      LINKAGE SECTION.
-       01 CUS-ID	PIC 999.
-       01 RELAKEY	PIC 9(9).
-       01 W-POS		PIC 999.
-            
-       CALL INVERSION USING CUS-ID, RELAKEY, W-POS.       
-       PROCEDURE DIVISION USING CUS-ID, RELAKEY, W-POS.
-       MAIN-PARAGRAPH.
-       OPEN  INPUT  CUSTOMER-DATA,
-             OUTPUT CUSTOMER-OUT.
-       CALL INVERSION USING 
-       PERFORM FIRST-TASK.
-       PERFORM SECOND-TASK UNTIL ITS-DONE.
-
-       CLOSE CUSTOMER-DATA,
-             CUSTOMER-OUT.
-
-       STOP RUN.
-
+       SET PF-LENGTH TO 0.
+       PERFORM GET-READY.
+       PERFORM WHATSUPDOC1 UNTIL W-NEEDS = 3.
+       PERFORM WHATSUPDOC2.
 
 
        SUPPORTING-SUBROUTINES SECTION.
 
-       FIRST-TASK.
-           DISPLAY UBER-QUESTION.
-           ACCEPT UBER-ANSWER.
-           READ CUSTOMER-DATA.
-           MOVE UBER-ANSWER TO NEW-ID.
+       WHATSUPDOC1.
+           SET W-NEEDS TO 0.
+           DISPLAY QUESTION1 WITHOUT ADVANCING.
+           ACCEPT W-NEEDS.
+           IF W-INFO = 1
+               PERFORM SEARHBYNAME
+           ELSE IF W-NEEDS = 2
+               PERFORM SEARCHBYNUMBER
+           ELSE DISPLAY "CHOOSE 1,2,OR 3" WITHOUT ADVANCING.
+           ACCEPT W-NEEDS.
+
+       SEARCHBYNAME.
+       CALL "OPEN-CUSTOMER-NAME" USING HARKINDEX x(256).
+       CALL "SEARCH-CUSTOMER-NAME" USING HARKINDEX position 9(9) comp ,
+       						name x(30).
+       	IF POSITION = 0
+       	  DISPLAY "NAME NOT FOUND."
+       	  CALL "ADD-CUSTOMER-NAME" USING STATUS(9), NAME X(30),
+       	  				POSITION 9(9) COMP
+       	  				CALL 'CLOSE-CUSTOMER-NAME'
+       	  				
+       	   ELSE DISPLAY "NAME FOUND"
+       	  DISPLAY " W-CUSTOMERNAME(POSITION).
+       CALL "NEXT-CUSTOMER-NAME" USING POSITION 9(9) COMP, NAME X(30).
+       	  IF POSITION = 0
+       	 DISPLAY "THATS ALL FOLKS"
+       	  ELSE DISPLAY "NAME FOUND"
+       	 DISPLAY  W-CUSTOMERNAME(POSITION).
+	
+	
+       SEARCHBYNUMBER.
+           DISPLAY "ENTER THE NUMBER TO BE SEARCHED" WITHOUT ADVANCING.
+           ACCEPT W-PHONE-NUMB.
+           IF W-PHONE-NUMB > 1000000000
+               MOVE PF-LENGTH TO W-LENGTH.
+               SET PF-LENGTH TO 0.
+               PERFORM NUMBTABLE UNTIL PF-LENGTH > W-LENGTH
+           ELSE DISPLAY "INVALID NUMBER GIVEN, TRY AGAIN."
+
+           IF PF-LENGTH > W-LENGTH
+               DISPLAY "Number not found, add new customer?"
+               ACCEPT ADDNEWCUSTOMER.
+                      IF ADDNEWCUSTOMER = "Y" OR "YES",
+                         PERFORM ADDNEWCUSTOMERNOW
+                      ELSE IF ADDNEWCUSTOMER = "N" OR "NO",
+                         DISPLAY "RETRY THAT PHONE NUMBER THEN SIR".
 
 
-       SECOND-TASK.
-
-           IF CUS-ID = NEW-ID DISPLAY "CUSTOMER FOUND",
-               PERFORM UBER-QUESTION2
-           ELSE READ CUSTOMER-DATA, AT END
-               PERFORM UBER-QUESTION3 UNTIL YESORNO = 'N'.
-
-
-       UBER-QUESTION2.
-       DISPLAY "WHAT WOULD YOU LIKE TO DO WITH CUSTOMER BALANCE?".
-       DISPLAY "ADD OR DEBIT?".
-       ACCEPT UBER-ANSWER2.
-           IF UBER-ANSWER2 = "ADD"
-               DISPLAY "HOW MUCH ARE WE ADDING TODAY?"
-               ACCEPT ADDED-BALANCE
-               MOVE CUSTOMER-REC TO NEW-CUSTOMER
-               ADD ADDED-BALANCE TO NEW-BAL
-               PERFORM NEW-ADDS
-           ELSE IF UBER-ANSWER2 = "DEBIT"
-               DISPLAY "HOW MUCH ARE WE SUBTRACTING TODAY?"
-               ACCEPT SUBTRACTED-BALANCE
-               MOVE CUSTOMER-REC TO NEW-CUSTOMER
-               SUBTRACT SUBTRACTED-BALANCE FROM NEW-BAL
-               MOVE NEW-CUSTOMER TO ADDING-CUSTOMER
-               WRITE ALL-OUT FROM ADDING-CUSTOMER
-           ELSE DISPLAY "ONLY ALLOWED TO USE TERMS ADD OR DEBIT".
+       GET-READY.
+           MOVE 128 TO HI-BUCKET.
+           MOVE 1 TO W-HASH-POS.
+           WRITE HI-BUCKET.
+           MOVE 2 TO HI-BUCKET.
+         PERFORM VARYING W-HASH-POS FROM 2 BY 1 UNTIL W-HASH-POS > 129.
+               WRITE HI-BUCKET.
+           END-PERFORM.
+           MOVE 1 TO W-BUCKET.
+           MOVE "Phone Hash Table Index" TO H-PHONE-REC.
+           MOVE 2 TO PF-LINK(292).
+           WRITE BUCKET-REC.
+           MOVE 2 TO H-PHONE-REC.
+           MOVE 0 TO PF-LENGTH.
 
 
-       UBER-QUESTION3.
-       DISPLAY "WOULD YOU LIKE TO CREATE A NEW CUSTOMER?"
-       DISPLAY "Y OR N?".
-       ACCEPT YESORNO.
-           IF YESORNO = 'Y'
-              PERFORM ADD-TASK
-           ELSE IF YESORNO = 'N'
-               DISPLAY "THEN GOODBYE TO YOU SIR."
-               SET ITS-DONE TO TRUE
-           ELSE DISPLAY "ONLY Y OR N WILL DO.".
-
-       ADD-TASK.
-       DISPLAY "PLEASE ENTER CUSTOMER ID".
-       ACCEPT NEW-ID.
-       DISPLAY 'ENTER CUSTOMERS NAME'.
-       ACCEPT NEW-NAME.
-       DISPLAY 'SET THE CUSTOMERS CREDIT LIMIT'.
-       ACCEPT NEW-LIMIT.
-       DISPLAY 'SUPPLY THE CURRENT BANK BALANCE'.
-       ACCEPT NEW-BAL.
-       DISPLAY 'NOW THE MAGIC HAPPENS,,,PLEASE WAIT'.
-
-       CLOSE CUSTOMER-DATA.
-       OPEN INPUT CUSTOMER-DATA.
-       SET NOT-EOF TO TRUE.
-       READ CUSTOMER-DATA.
-       PERFORM NEW-ADDS UNTIL EOF.
-
-       NEW-ADDS.
-           IF CUS-ID < NEW-ID
-               MOVE CUSTOMER-REC TO ADDING-CUSTOMER
-               WRITE ALL-OUT FROM ADDING-CUSTOMER
-           ELSE IF CUS-ID > NEW-ID
-               MOVE NEW-CUSTOMER TO ADDING-CUSTOMER
-               WRITE ALL-OUT FROM ADDING-CUSTOMER
-               PERFORM FINISH-JOB.
-
-       READ CUSTOMER-DATA, AT END SET EOF TO TRUE.
-
-       WASH-DISHES.
-       CLOSE CUSTOMER-DATA,
-               CUSTOMER-OUT.
-
-       OPEN INPUT CUSTOMER-OUT,
-            OUTPUT CUSTOMER-DATA.
-       SET NOT-EOF TO TRUE.
-       READ CUSTOMER-OUT.
-       PERFORM FINISH-JOB2 UNTIL EOF.
+       NUMTABLE.
+           IF W-PHONE-NUMB = PF-DATA(PF-LENGTH)
+                   DISPLAY "FOUND THE NUMBER"
+                   DISPLAY PF-LENGTH
+           ELSE ADD 1 TO PF-LENGTH.
 
 
-       CLOSE CUSTOMER-DATA,
-             CUSTOMER-OUT.
+       WHATSUPDOC2.
+       CLOSE      PHONE-DATA
+                  PHONE-REC
+                  PHONE-FILE.
+       STOP RUN.
 
-       OPEN INPUT CUSTOMER-DATA,
-            OUTPUT CUSTOMER-OUT.
+       ADDNEWCUSTOMER.
+            DISPLAY "ENTER CUSTOMERS FIRST AND LAST NAME"
+            ACCEPT W-CUS-NAME.
+            DISPLAY "ENTER CUSTOMERS NUMBER"
+            ACCEPT W-CUS-NUMB.
+            DISPLAY "ENTER CUSTOMERS ADDRESS".
+            ACCEPT W-CUS-ADD.
+            DISPLAY "ENTER CUSTOMERS CITY".
+            ACCEPT W-CUS-CITY.
+            DISPLAY "ENTER STATE INITIALS".
+            ACCEPT W-CUS-STATE.
+            DISPLAY "ENTER ZIP CODE".
+            ACCEPT W-CUS-ZIP.
 
-       FINISH-JOB.
-               MOVE CUSTOMER-REC TO ADDING-CUSTOMER.
-               DISPLAY ADDING-CUSTOMER.
-               WRITE ALL-OUT FROM ADDING-CUSTOMER.
-               READ CUSTOMER-DATA, AT END SET EOF TO TRUE.
+            ADD 1 TO PF-LENGTH.
+            MOVE PF-LENGTH TO X-BUCKET.
+            MOVE W-CUS-NUM TO PF-NUM(X-BUCKET).
+            WRITE PF-DATA.
+       CLOSE PHONE-DATA.
+       OPEN OUTPUT PHONE-DATA.
+           MOVE W-PHONE-DATA TO TEMPTOADD.
+           WRITE PHONE-DATA FROM TEMPTOADD.
+       CLOSE PHONE-DATA.
+       OPEN INPUT PHONE-DATA.
 
-       FINISH-JOB2.
-               MOVE ALL-OUT TO ADDING-CUSTOMER.
-               WRITE CUSTOMER-REC FROM ADDING-CUSTOMER.
-               READ CUSTOMER-OUT, AT END SET EOF TO TRUE.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
