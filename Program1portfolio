@@ -1,0 +1,6 @@
+Lee Holt
+Portfolio of program1
+
+This program was due 2\14 and I got it in on time. Didn’t have a partner but jammed on it for a couple of days and knocked it out.  Everything in this program had a forward flow so it was about as hard as the hardest programs in our first Cobol class and used the same logics of pull data in, look at the data,  examine if that’s what you need and if you don’t find it add it in. I worry because this is just the start of how hard these programs get and even though someone showed up in the library to talk to after I posted on piazza, they didn’t have the time to actually work on it that day.  Hope I find someone who actually wants to do work for the next program. 
+
+I decided to make the program look clean, open  what I need , perform, perform, close, done. The subroutines are the meat of the program.  I ask the user to submit the id and then run a task to see if that id is in the system, if not I ask if the person wants to add it or made a mistake.  The person gets to add the information and then it is stored with the rest of the information.  In the program I kind of got tired of picking new names for programs so that’s why I called it washing-the dishes.   Since that also refers to something you do at the end of what you set out to do “make food, eat it, clean up”.

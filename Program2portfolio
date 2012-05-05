@@ -1,0 +1,9 @@
+Lee Holt
+Portfolio for program 2
+
+	I’m not doing to well on program 2. 
+Barely got program 1 finished and program 2 asks for hash tables.  I don’t really understand linkage and calls but will put linkage in my second program. Cant seem to get anyone to want to team up on this program either.
+Somehow I accidentally deleted my file while copying it over and renaming it.   So very sad.  Wasn’t working yet anyway. I’ve worked on it now for about 14 hours but some of that time I was just looking up examples.  
+Made the FD  into a good hash file for the id and name. set up the working storage to account for lots of variables im going to need including a huge hash-file. Of course also set my found\not found variables.
+I set up the program to start out by asking what the user wants to do and it accepts 2 variations of name and 2 variations of id. Points for variation I hope!  It will perform the search based on the answer to this and set up the hash-file.
+I have found the examples and am putting them in the program. Trying to glue them together in the main program instead of using linkage but I’ve run out of time. Have to turn it in and hope for a merciful grade.  
